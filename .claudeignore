@@ -1,0 +1,25 @@
+# 機密ファイル - Claude Code による読み込みを禁止
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.test
+
+# 認証情報・シークレット
+credentials.json
+secrets.json
+serviceAccountKey.json
+token.json
+auth.json
+
+# 秘密鍵
+*.pem
+*.key
+*_rsa
+*_ecdsa
+*_ed25519
+
+# npm 認証トークン
+.npmrc
