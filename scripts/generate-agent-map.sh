@@ -2,51 +2,14 @@
 # エージェント・スキルマップを自動生成するスクリプト
 # pre-commit フックから呼び出される
 #
-# 組織構造の定義もこのスクリプト内で管理する。
-# エージェントを追加した場合は ORGANIZATION 配列にも追加すること。
+# 組織階層はこのスクリプト内で定義する。
+# エージェントを追加した場合はこのスクリプトも更新すること。
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 AGENTS_DIR="$REPO_ROOT/.claude/agents"
 OUTPUT="$REPO_ROOT/AGENT_MAP.md"
-
-# ── 組織構造定義 ──────────────────────────────────
-# 形式: "セクション種別|ディレクトリ名"
-#   HEADER:  セクション見出し（├ 直属 / 組織グループ）
-#   AGENT:   エージェント
-#   FOOTER:  セクション閉じ
-#   BLANK:   空行
-ORGANIZATION=(
-  "AGENT|secretary"
-  "AGENT|corporate-planning"
-  "BLANK|"
-  "HEADER|CxO"
-  "AGENT|cto"
-  "AGENT|coo"
-  "AGENT|cfo"
-  "AGENT|cso"
-  "AGENT|cmo"
-  "AGENT|cdo"
-  "FOOTER|"
-  "BLANK|"
-  "HEADER|プロダクト・デザイン組織"
-  "AGENT|pdm"
-  "AGENT|designer"
-  "FOOTER|"
-  "BLANK|"
-  "HEADER|開発組織"
-  "AGENT|backend-engineer"
-  "AGENT|frontend-engineer"
-  "AGENT|infra-engineer"
-  "FOOTER|"
-  "BLANK|"
-  "HEADER|QA組織"
-  "AGENT|qa-engineer"
-  "AGENT|security-engineer"
-  "AGENT|tester"
-  "FOOTER|"
-)
 
 # ── 集計 ──────────────────────────────────────────
 agent_count=0
@@ -62,38 +25,49 @@ for agent_dir in "$AGENTS_DIR"/*/; do
 done
 
 # ── ヘルパー関数 ──────────────────────────────────
-get_title() {
-  local dir="$1"
-  head -1 "$AGENTS_DIR/$dir/CLAUDE.md" 2>/dev/null | sed 's/^# //'
+
+# CLAUDE.md のタイトル行から神名を取得
+get_name() {
+  head -1 "$AGENTS_DIR/$1/CLAUDE.md" 2>/dev/null | sed 's/^# //' | sed 's/ — .*//'
 }
 
-get_subtitle() {
-  local dir="$1"
-  local title
-  title=$(get_title "$dir")
-  # "Name — Role" から Name 部分を抽出
-  echo "$title" | sed 's/ — .*//'
-}
-
+# CLAUDE.md のタイトル行から役職を取得
 get_role() {
-  local dir="$1"
-  local title
-  title=$(get_title "$dir")
-  echo "$title" | sed 's/.* — //'
+  head -1 "$AGENTS_DIR/$1/CLAUDE.md" 2>/dev/null | sed 's/^# //' | sed 's/.* — //'
 }
 
-# エージェントの神話由来を CLAUDE.md 2行目から取得（なければ空）
+# CLAUDE.md 3行目から日本語神名を取得
 get_myth() {
-  local dir="$1"
-  local line3
-  line3=$(sed -n '3p' "$AGENTS_DIR/$dir/CLAUDE.md" 2>/dev/null)
-  # "あなたは **Name**（Japanese）。..." からカッコ内を抽出
-  echo "$line3" | grep -o '（[^）]*）' | head -1 | tr -d '（）' || true
+  sed -n '3p' "$AGENTS_DIR/$1/CLAUDE.md" 2>/dev/null | grep -o '（[^）]*）' | head -1 | tr -d '（）' || true
 }
 
+# エージェント1行を出力: prefix, dir, is_last
+print_agent() {
+  local prefix="$1" dir="$2" is_last="$3"
+  local name role myth label line_char line_str line_len
+
+  name=$(get_name "$dir")
+  role=$(get_role "$dir")
+  myth=$(get_myth "$dir")
+  label="${name}（${role}）"
+
+  line_len=$((30 - ${#label}))
+  [ "$line_len" -lt 2 ] && line_len=2
+  line_str=""
+  for ((i=0; i<line_len; i++)); do line_str="${line_str}─"; done
+
+  if [ "$is_last" = "1" ]; then
+    line_char="└"
+  else
+    line_char="├"
+  fi
+
+  printf '%s%s── %s %s %s\n' "$prefix" "$line_char" "$label" "$line_str" "$myth"
+}
+
+# スキル一覧を出力: prefix, dir
 print_skills() {
-  local dir="$1"
-  local prefix="$2"
+  local prefix="$1" dir="$2"
   local skills_dir="$AGENTS_DIR/$dir/skills"
   [ -d "$skills_dir" ] || return
 
@@ -104,13 +78,11 @@ print_skills() {
     skills+=("$skill")
   done
 
-  local total=${#skills[@]}
-  local i=0
+  local total=${#skills[@]} i=0
   for skill in "${skills[@]}"; do
     i=$((i + 1))
-    local skill_name
+    local skill_name skill_title
     skill_name=$(basename "$skill" .md)
-    local skill_title
     skill_title=$(head -1 "$skill" 2>/dev/null | sed 's/^# //' | sed 's/ *（.*）//')
 
     if [ "$i" -eq "$total" ]; then
@@ -119,6 +91,21 @@ print_skills() {
       printf '%s├── %-28s%s\n' "$prefix" "$skill_name" "$skill_title"
     fi
   done
+}
+
+# エージェント + スキルをまとめて出力
+print_agent_block() {
+  local prefix="$1" dir="$2" is_last="$3"
+  local child_prefix
+
+  print_agent "$prefix" "$dir" "$is_last"
+
+  if [ "$is_last" = "1" ]; then
+    child_prefix="${prefix}    "
+  else
+    child_prefix="${prefix}│   "
+  fi
+  print_skills "$child_prefix" "$dir"
 }
 
 # ── 出力生成 ──────────────────────────────────────
@@ -135,76 +122,55 @@ RYOTA（CEO）
 │
 HEADER
 
-  in_section=false
-  section_name=""
+  # ── CEO 直属: 秘書 ──
+  print_agent_block "" "secretary" "0"
+  echo "│"
 
-  # 最後の AGENT エントリのインデックスを特定
-  last_agent_idx=-1
-  for ((idx=0; idx<${#ORGANIZATION[@]}; idx++)); do
-    entry="${ORGANIZATION[$idx]}"
-    [ "${entry%%|*}" = "AGENT" ] && last_agent_idx=$idx
+  # ── CxO ──
+  echo "└── CxO"
+  echo "    │"
+
+  # CxO メンバー
+  for dir in cto coo cfo cso cmo cdo; do
+    print_agent_block "    " "$dir" "0"
+    echo "    │"
   done
 
-  for ((idx=0; idx<${#ORGANIZATION[@]}; idx++)); do
-    entry="${ORGANIZATION[$idx]}"
-    type="${entry%%|*}"
-    value="${entry##*|}"
+  # ── 経営企画 ──
+  echo "    ├── 経営企画"
+  echo "    │   │"
+  print_agent_block "    │   " "corporate-planning" "1"
+  echo "    │"
 
-    case "$type" in
-      BLANK)
-        echo "│"
-        ;;
-      HEADER)
-        section_name="$value"
-        in_section=true
-        # セクション幅を揃える
-        local_header=$(printf '│   ┌─── %s ' "$section_name")
-        local_pad=$((48 - ${#local_header}))
-        printf '%s' "$local_header"
-        for ((j=0; j<local_pad; j++)); do printf '─'; done
-        printf '┐\n'
-        echo "│   │"
-        ;;
-      FOOTER)
-        in_section=false
-        if [ "$idx" -gt "$last_agent_idx" ]; then
-          echo "    │"
-          echo "    └────────────────────────────────────────────┘"
-        else
-          echo "│   │"
-          echo "│   └────────────────────────────────────────────┘"
-        fi
-        ;;
-      AGENT)
-        local_name=$(get_subtitle "$value")
-        local_role=$(get_role "$value")
-        local_jp=$(get_myth "$value")
-        local_label="${local_name}（${local_role}）"
+  # ── プロダクトデザインチーム ──
+  echo "    ├── プロダクトデザインチーム"
+  echo "    │   │"
+  print_agent_block "    │   " "pdm" "0"
+  echo "    │   │"
+  print_agent_block "    │   " "designer" "1"
+  echo "    │"
 
-        # 罫線の長さ調整
-        local_line_len=$((30 - ${#local_label}))
-        [ "$local_line_len" -lt 2 ] && local_line_len=2
-        local_line=""
-        for ((j=0; j<local_line_len; j++)); do local_line="${local_line}─"; done
+  # ── 開発チーム ──
+  echo "    ├── 開発チーム"
+  echo "    │   │"
+  print_agent_block "    │   " "backend-engineer" "0"
+  echo "    │   │"
+  print_agent_block "    │   " "frontend-engineer" "0"
+  echo "    │   │"
+  print_agent_block "    │   " "infra-engineer" "1"
+  echo "    │"
 
-        if [ "$idx" -eq "$last_agent_idx" ]; then
-          printf '└── %s %s %s\n' "$local_label" "$local_line" "$local_jp"
-          print_skills "$value" "    "
-        else
-          printf '├── %s %s %s\n' "$local_label" "$local_line" "$local_jp"
-          print_skills "$value" "│   "
-          echo "│"
-        fi
-        ;;
-    esac
-  done
+  # ── QA チーム ──
+  echo "    └── QAチーム"
+  echo "        │"
+  print_agent_block "        " "qa-engineer" "0"
+  echo "        │"
+  print_agent_block "        " "security-engineer" "0"
+  echo "        │"
+  print_agent_block "        " "tester" "1"
 
-  # 末尾を整形（最後の │ を削除して閉じる）
   echo '```'
 
 } > "$OUTPUT"
-
-# 末尾の空の │ 行を除去
-sed -i '' '/^│$/{ N; /^│\n```$/{ s/^│\n/\n/; }; }' "$OUTPUT"
 
 echo "AGENT_MAP.md を更新しました（${agent_count} エージェント / ${skill_count} スキル）"
