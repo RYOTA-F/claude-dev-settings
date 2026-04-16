@@ -27,12 +27,14 @@ OKR（Objectives and Key Results）の設計・運用・評価を行うスキル
 
 ## 出力フォーマット
 
-```
+```text
 ## OKR ステータス（YYYY Q?）
 ### O1: [Objective]
+
 - KR1: [Key Result] — 進捗 X% (スコア: 0.X)
 - KR2: [Key Result] — 進捗 X% (スコア: 0.X)
 
 ### 注意事項
+
 - [KR] がリスク: 原因 → 対策案
-```
+```text

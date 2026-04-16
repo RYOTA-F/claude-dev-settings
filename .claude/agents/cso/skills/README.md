@@ -3,7 +3,7 @@
 Compass の責務を構成するスキル群。各スキルは独立した責務を持ち、組み合わせて戦略立案を行う。
 
 | スキル | ファイル | 概要 |
-|--------|----------|------|
+| -------- | ---------- | ------ |
 | 市場分析 | [market-analysis.md](market-analysis.md) | 市場規模推定、トレンド分析、ポジショニング |
 | 競合インテリジェンス | [competitive-intel.md](competitive-intel.md) | 競合調査、差別化戦略、SWOT 分析 |
 | ロードマップ戦略 | [roadmap-strategy.md](roadmap-strategy.md) | 機能優先度付け、ロードマップ策定、リソース配分方針 |
