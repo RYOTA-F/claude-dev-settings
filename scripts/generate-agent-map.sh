@@ -41,7 +41,7 @@ ORGANIZATION=(
   "AGENT|infra-engineer"
   "FOOTER|"
   "BLANK|"
-  "HEADER|監査組織"
+  "HEADER|QA組織"
   "AGENT|qa-engineer"
   "AGENT|security-engineer"
   "AGENT|tester"
