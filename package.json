@@ -1,0 +1,22 @@
+{
+  "name": "claude-dev-settings",
+  "version": "1.0.0",
+  "description": "Claude Code の設定・カスタマイズを管理するリポジトリ。",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "husky",
+    "generate-map": "./scripts/generate-agent-map.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RYOTA-F/claude-dev-settings.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/RYOTA-F/claude-dev-settings/issues"
+  },
+  "homepage": "https://github.com/RYOTA-F/claude-dev-settings#readme"
+}

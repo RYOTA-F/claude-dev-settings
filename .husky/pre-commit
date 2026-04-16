@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# エージェント・スキルマップを自動同期
+./scripts/generate-agent-map.sh
+git add AGENT_MAP.md
